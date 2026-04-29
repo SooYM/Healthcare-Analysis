@@ -1,5 +1,3 @@
-Service account key (Option B)
-
   Account:  service1@bigquery-tutorial-480009.iam.gserviceaccount.com
 
   1. Google Cloud Console → IAM & Admin → IAM → open that service account.
