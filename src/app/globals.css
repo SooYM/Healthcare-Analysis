@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-clinic-navy text-ink-100 antialiased;
+  background-image:
+    radial-gradient(900px 700px at 12% 8%, rgba(45, 212, 191, 0.16), transparent 60%),
+    radial-gradient(900px 700px at 88% 20%, rgba(251, 113, 133, 0.12), transparent 62%),
+    radial-gradient(1000px 800px at 55% 92%, rgba(124, 58, 237, 0.10), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+}
+
+::selection {
+  background: rgba(45, 212, 191, 0.26);
+}
+
+/* Subtle, consistent scrollbars (webkit-based browsers) */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}

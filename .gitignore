@@ -1,0 +1,30 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+.DS_Store
+*.tsbuildinfo
+
+# Service account keys (never commit JSON keys)
+.secrets/*.json
+
+# Credentials and Environment
+.env.local
+.secrets
+env.bigquery.us
+
+# Dependencies and Build
+node_modules/
+.next/
+.DS_Store
+tsconfig.tsbuildinfo
+.env.local
+.secrets
+env.bigquery.us
+node_modules/
+.next/
+.DS_Store
+tsconfig.tsbuildinfo
