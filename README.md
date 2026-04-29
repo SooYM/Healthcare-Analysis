@@ -2,8 +2,6 @@
 
 A high-performance, AI-augmented healthcare analytics dashboard built with Next.js, BigQuery, and Vertex AI. Explore longitudinal trends, correlation structures, and clinical insights across patient cohorts with ease.
 
-![Dashboard Preview](public/preview.png) *(Note: Add a real preview image if available)*
-
 ## 🚀 Features
 
 -   **BigQuery Integration**: Directly query large-scale healthcare data stored in Google BigQuery.
