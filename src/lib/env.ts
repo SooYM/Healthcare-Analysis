@@ -16,6 +16,7 @@ const envSchema = z.object({
   BQ_COL_VALUE: z.string().default("value"),
   VERTEX_LOCATION: z.string().default("us-central1"),
   VERTEX_MODEL: z.string().default("gemini-1.5-flash"),
+  HUGGINGFACE_MODEL: z.string().default("google/medgemma-27b-text-it"),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
@@ -33,6 +34,7 @@ export function getServerEnv(): AppEnv {
     BQ_COL_VALUE: process.env.BQ_COL_VALUE,
     VERTEX_LOCATION: process.env.VERTEX_LOCATION,
     VERTEX_MODEL: process.env.VERTEX_MODEL,
+    HUGGINGFACE_MODEL: process.env.HUGGINGFACE_MODEL,
   });
 }
 

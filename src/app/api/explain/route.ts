@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerEnv } from "@/lib/env";
 import { generateExplanationOpenAI } from "@/lib/openai";
+import { generateExplanationHuggingFace } from "@/lib/huggingface";
 
 /** JSON may contain null where client had NaN; Zod rejects NaN on number. */
 const finiteOrNull = z.preprocess(
@@ -124,9 +125,22 @@ export async function POST(req: Request) {
     .filter(Boolean)
     .join("\n");
 
-  // 1. Try OpenAI (if OPENAI_API_KEY is set)
-  const openaiKey = process.env.OPENAI_API_KEY;
+  // 1. Try Hugging Face MedGemma (if HF token is set)
+  const hfKey = process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN;
   const errors: string[] = [];
+  if (hfKey) {
+    try {
+      const answer = await generateExplanationHuggingFace(hfKey, prompt);
+      return NextResponse.json({ answer, mode: "huggingface" as const });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("Hugging Face explain error:", msg);
+      errors.push(`HuggingFace: ${msg}`);
+    }
+  }
+
+  // 2. Try OpenAI (if OPENAI_API_KEY is set)
+  const openaiKey = process.env.OPENAI_API_KEY;
   if (openaiKey) {
     try {
       const answer = await generateExplanationOpenAI(openaiKey, prompt);
@@ -138,14 +152,14 @@ export async function POST(req: Request) {
     }
   }
 
-  // 2. Local stub fallback — include error details so user knows why
+  // 3. Local stub fallback — include error details so user knows why
   const answer = localStubAnswer(question, context);
   return NextResponse.json({
     answer,
     mode: "local_stub" as const,
     warning: errors.length
       ? `LLM errors: ${errors.join(" | ")}`
-      : "Set OPENAI_API_KEY for LLM answers.",
+      : "Set HUGGINGFACE_API_KEY (or HF_TOKEN) for MedGemma, or OPENAI_API_KEY for fallback.",
   });
 }
 

@@ -5,7 +5,7 @@ A high-performance, AI-augmented healthcare analytics dashboard built with Next.
 ## 🚀 Features
 
 -   **BigQuery Integration**: Directly query large-scale healthcare data stored in Google BigQuery.
--   **AI Clinical Assistant**: Powered by Gemini (Vertex AI) and OpenAI, providing natural language explanations and insights for complex biomarker data.
+-   **AI Clinical Assistant**: Powered by Hugging Face MedGemma (primary), with OpenAI fallback, providing natural language explanations and insights for complex biomarker data.
 -   **Dynamic Visualizations**: 
     -   **Longitudinal Trends**: Multi-level drill-down (Year → Month → Day) to observe biomarker changes over time.
     -   **Interactive Scatter Plots**: Analyze relationships between biomarker pairs within the same visit.
@@ -69,6 +69,8 @@ A high-performance, AI-augmented healthcare analytics dashboard built with Next.
 | `BIGQUERY_TABLE_FQN` | Fully qualified name of your BigQuery table. |
 | `VERTEX_LOCATION` | GCP region for Vertex AI (e.g., `us-central1`). |
 | `VERTEX_MODEL` | Vertex AI model name (e.g., `gemini-1.5-flash`). |
+| `HUGGINGFACE_API_KEY` | Hugging Face token used for MedGemma inference. |
+| `HUGGINGFACE_MODEL` | Hugging Face model id (default: `google/medgemma-27b-text-it`). |
 | `OPENAI_API_KEY` | OpenAI API key for fallback interpretation services. |
 
 ## 📁 Project Structure
