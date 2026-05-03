@@ -5,10 +5,11 @@ export async function generateExplanationOpenAI(
   prompt: string,
 ): Promise<string> {
   const baseURL = process.env.OPENAI_BASE_URL || undefined;
+  const model = process.env.OPENAI_MODEL || "gpt-4o";
   const client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model,
     max_tokens: 2048,
     temperature: 0.35,
     messages: [

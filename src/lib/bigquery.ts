@@ -65,29 +65,29 @@ function buildUnpivotBranch(
   
   let branch = `
     SELECT
-      CAST(${pid} AS STRING) AS patient_id,
-      FORMAT_DATE('%Y-%m-%d', DATE(${vd})) AS visit_date,
+      CAST(\`${pid}\` AS STRING) AS patient_id,
+      FORMAT_DATE('%Y-%m-%d', DATE(\`${vd}\`)) AS visit_date,
       CAST(biomarker AS STRING) AS biomarker,
       value,
       '${tableName}' AS \`group\`
     FROM (
       SELECT
-        ${pid},
-        ${vd},
+        \`${pid}\`,
+        \`${vd}\`,
         ${castCols}
       FROM \`${fullTableId}\`
     )
     UNPIVOT(
       value FOR biomarker IN (${quotedCols})
     )
-    WHERE DATE(${vd}) BETWEEN @dateFrom AND @dateTo
+    WHERE DATE(\`${vd}\`) BETWEEN @dateFrom AND @dateTo
   `;
   
   if (includeBiomarkerFilter) {
     branch += ` AND biomarker IN UNNEST(@biomarkers)`;
   }
   if (hasPatientId) {
-    branch += ` AND CAST(${pid} AS STRING) = @patientId`;
+    branch += ` AND CAST(\`${pid}\` AS STRING) = @patientId`;
   }
   
   return branch.trim();
@@ -234,10 +234,10 @@ export async function queryDistinctPatients(env: AppEnv): Promise<string[]> {
   const fullId = isSingleTable ? singleTableFqn! : `${project}.${dataset}.${name}`;
 
   const sql = `
-    SELECT DISTINCT CAST(${pid} AS STRING) AS patient_id
+    SELECT DISTINCT CAST(\`${pid}\` AS STRING) AS patient_id
     FROM \`${fullId}\`
-    WHERE ${pid} IS NOT NULL
-    ORDER BY patient_id
+    WHERE \`${pid}\` IS NOT NULL
+    ORDER BY 1
   `;
 
   const [job] = await client.createQueryJob({ query: sql });

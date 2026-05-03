@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getServerEnv } from "@/lib/env";
 import { generateExplanationOpenAI } from "@/lib/openai";
 import { generateExplanationHuggingFace } from "@/lib/huggingface";
+import { annotateWithRanges, detectClinicalPatterns } from "@/lib/clinical-ranges";
 
 /** JSON may contain null where client had NaN; Zod rejects NaN on number. */
 const finiteOrNull = z.preprocess(
@@ -68,6 +69,71 @@ function localStubAnswer(question: string, ctx: z.infer<typeof bodySchema>["cont
     .join("\n");
 }
 
+/**
+ * Build enriched prompt with clinical reference ranges and pattern detection.
+ */
+function buildEnrichedPrompt(
+  question: string,
+  context: z.infer<typeof bodySchema>["context"],
+): string {
+  // Annotate biomarkers with clinical reference ranges + flags
+  const annotatedStats = annotateWithRanges(
+    context.summary as Record<string, { mean: number | null; std: number | null; min: number | null; max: number | null; n: number }>,
+  );
+
+  // Detect multi-biomarker clinical patterns
+  const patterns = detectClinicalPatterns(
+    context.summary as Record<string, { mean: number | null; n: number }>,
+  );
+
+  // Extract notable correlations (|r| > 0.3, skip diagonal)
+  const corrPairs: string[] = [];
+  const corrKeys = Object.keys(context.correlation);
+  for (let i = 0; i < corrKeys.length; i++) {
+    for (let j = i + 1; j < corrKeys.length; j++) {
+      const a = corrKeys[i], b = corrKeys[j];
+      const v = context.correlation[a]?.[b];
+      if (typeof v === "number" && Math.abs(v) > 0.3) {
+        corrPairs.push(`${a} × ${b}: r=${v.toFixed(3)}`);
+      }
+    }
+  }
+  const corrSummary = corrPairs.length
+    ? corrPairs.slice(0, 20).join("\n")
+    : "No notable correlations (|r| > 0.3) found.";
+
+  const sections = [
+    `Question: ${question}`,
+    "",
+    `Data source: ${context.dataSource}, ${context.rowCount} rows.`,
+    context.filters
+      ? `Filters: ${context.filters.dateFrom} to ${context.filters.dateTo}${context.filters.biomarkers?.length ? `, biomarkers: ${context.filters.biomarkers.join(", ")}` : ""}`
+      : "",
+    context.chartHint ?? "",
+    "",
+    "── Biomarker Statistics (with clinical reference ranges) ──",
+    annotatedStats,
+    "",
+    "── Notable Correlations (Pearson) ──",
+    corrSummary,
+  ];
+
+  if (patterns.length > 0) {
+    sections.push(
+      "",
+      "── Detected Clinical Patterns ──",
+      ...patterns,
+    );
+  }
+
+  sections.push(
+    "",
+    "Instructions: Analyze the above data in clinical context. Reference the normal ranges, flag abnormalities, explain correlations, and identify patterns relevant to the user's question. Be precise and evidence-based.",
+  );
+
+  return sections.filter(Boolean).join("\n");
+}
+
 export async function POST(req: Request) {
   let json: unknown;
   try {
@@ -87,55 +153,20 @@ export async function POST(req: Request) {
   const { question, context } = parsed.data;
   const env = getServerEnv();
 
-  // Build a compact summary (avoid huge JSON blobs that exceed token limits)
-  const summaryLines = Object.entries(context.summary)
-    .slice(0, 12) // cap at 12 biomarkers
-    .map(([k, s]) => `${k}: mean=${fmt(s.mean)}, std=${fmt(s.std)}, range=[${fmt(s.min)},${fmt(s.max)}], n=${s.n}`)
-    .join("\n");
+  // Build enriched prompt with clinical context
+  const prompt = buildEnrichedPrompt(question, context);
 
-  // Extract only notable correlations (|r| > 0.3, skip diagonal)
-  const corrPairs: string[] = [];
-  const corrKeys = Object.keys(context.correlation);
-  for (let i = 0; i < corrKeys.length; i++) {
-    for (let j = i + 1; j < corrKeys.length; j++) {
-      const a = corrKeys[i], b = corrKeys[j];
-      const v = context.correlation[a]?.[b];
-      if (typeof v === "number" && Math.abs(v) > 0.3) {
-        corrPairs.push(`${a} × ${b}: r=${v.toFixed(3)}`);
-      }
-    }
-  }
-  const corrSummary = corrPairs.length
-    ? corrPairs.slice(0, 15).join("\n")
-    : "No notable correlations (|r| > 0.3) found.";
-
-  const prompt = [
-    `Question: ${question}`,
-    "",
-    `Data: ${context.dataSource}, ${context.rowCount} rows.`,
-    context.filters ? `Filters: ${context.filters.dateFrom} to ${context.filters.dateTo}${context.filters.biomarkers?.length ? `, biomarkers: ${context.filters.biomarkers.join(", ")}` : ""}` : "",
-    context.chartHint ?? "",
-    "",
-    "Biomarker stats:",
-    summaryLines,
-    "",
-    "Notable correlations:",
-    corrSummary,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  // 1. Try Hugging Face MedGemma (if HF token is set)
+  // 1. Try Hugging Face MedGemma / Featherless AI (if HF token is set)
   const hfKey = process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN;
   const errors: string[] = [];
   if (hfKey) {
     try {
       const answer = await generateExplanationHuggingFace(hfKey, prompt);
-      return NextResponse.json({ answer, mode: "huggingface" as const });
+      return NextResponse.json({ answer, mode: "medgemma" as const });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("Hugging Face explain error:", msg);
-      errors.push(`HuggingFace: ${msg}`);
+      console.error("Hugging Face / MedGemma explain error:", msg);
+      errors.push(`MedGemma: ${msg}`);
     }
   }
 
@@ -162,4 +193,3 @@ export async function POST(req: Request) {
       : "Set HUGGINGFACE_API_KEY (or HF_TOKEN) for MedGemma, or OPENAI_API_KEY for fallback.",
   });
 }
-
