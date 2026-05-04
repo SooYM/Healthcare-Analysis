@@ -612,7 +612,7 @@ export function Dashboard() {
           context: {
             filters: { dateFrom, dateTo, patientId: patientId.trim() || undefined, biomarkers: selectedBiomarkers },
             dataSource: data.source,
-            summary: data.summary ?? {},
+            rows: data.rows,
             correlation: data.correlation ?? {},
             rowCount: data.rowCount,
             chartHint:

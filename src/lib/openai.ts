@@ -5,17 +5,12 @@ export async function generateExplanationOpenAI(
   prompt: string,
 ): Promise<string> {
   const baseURL = process.env.OPENAI_BASE_URL || undefined;
-  const model = process.env.OPENAI_MODEL || "gpt-4o";
   const client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
 
-  const response = await client.chat.completions.create({
-    model,
-    max_tokens: 2048,
-    temperature: 0.35,
-    messages: [
-      {
-        role: "system",
-        content: `You are a clinical research assistant integrated into a health biomarker dashboard. Your ONLY purpose is to help users understand health-related biomarker data, trends, correlations, and indicators shown on this dashboard.
+  const response = await (client as any).responses.create({
+    model: "gpt-5.5",
+    input: prompt,
+    instructions: `You are a clinical research assistant integrated into a health biomarker dashboard. Your ONLY purpose is to help users understand health-related biomarker data, trends, correlations, and indicators shown on this dashboard.
 
 STRICT RULES:
 1. ONLY answer questions related to health biomarkers, medical lab results, clinical data interpretation, trends, correlations, and dashboard analytics.
@@ -24,15 +19,9 @@ STRICT RULES:
 4. When explaining biomarker indicators, explain what normal ranges typically are, what high or low values may indicate clinically, and how they relate to other biomarkers in the data.
 5. Use markdown formatting (bold, headers, lists) to make your response clear and readable.
 6. Be precise, cautious, and evidence-based. If data is insufficient, say so.`,
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
   });
 
-  const text = response.choices?.[0]?.message?.content ?? "";
+  const text = (response as any).output_text ?? "";
 
   if (!text.trim()) {
     throw new Error("Empty response from OpenAI");
