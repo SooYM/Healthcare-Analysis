@@ -78,17 +78,27 @@ A high-performance, AI-augmented healthcare analytics dashboard built with Next.
 ```text
 src/
 ├── app/            # Next.js App Router (pages and API routes)
+│   └── api/        # Backend endpoints (data, explain, patients, health)
 ├── components/     # React components (Dashboard, OlapCube, etc.)
 ├── lib/            # Shared utilities (BigQuery client, AI logic, stats)
 ├── types/          # TypeScript definitions
 public/             # Static assets
 scripts/            # Utility scripts for data processing or deployment
+PSEUDOCODE.md       # Detailed pseudocode & system walkthrough
 ```
 
+## 📖 Documentation
+
+For a detailed explanation of how every module works, the data flow from BigQuery to the browser, and the AI explanation pipeline, see **[PSEUDOCODE.md](./PSEUDOCODE.md)**.
+
+It covers:
+-   System architecture overview with ASCII diagrams
+-   Data types and shapes
+-   API route logic (data fetching, AI explain, patient listing)
+-   BigQuery UNPIVOT strategy for wide-to-long transformation
+-   Statistics engine (Pearson correlation, summary stats)
+-   Clinical reference ranges and pattern detection
+-   OLAP cube operations (slice, dice, drill, across)
+-   AI provider cascade (MedGemma → OpenAI → local stub)
+
 ## 📄 License
-
-This project is private and intended for internal use.
-
----
-
-Built with ❤️ for modern healthcare analytics.
