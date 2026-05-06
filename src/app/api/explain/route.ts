@@ -180,7 +180,7 @@ function buildEnrichedPrompt(
     const rangeLines = uniqueMarkers.map(m => {
       const ref = CLINICAL_RANGES[m];
       return ref ? `${m}: ${ref.low}-${ref.high} ${ref.unit}` : null;
-    }).filter(Boolean);
+    }).filter((line): line is string => line !== null);
     if (rangeLines.length > 0) {
       sections.push("", "── Clinical Reference Ranges ──", ...rangeLines);
     }
