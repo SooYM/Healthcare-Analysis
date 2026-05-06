@@ -27,8 +27,7 @@ MYSQL_PORT=3306
 MYSQL_VIEW_NAMES=View_Fact_Urine,View_Fact_CBC,View_Fact_Platelet_Profile,View_Fact_Lipid_Profile,View_Fact_Liver_Function,View_Fact_Kidney_Function,View_Fact_Iron_Profile,View_Fact_HbA1c,View_Fact_Urine_ACR,View_Fact_Calcium_Phos,View_Fact_Thyroid_Profile,View_Fact_Glucose_Fasting,View_Fact_Glucose_PP,View_Fact_Glucose_Diagnopath
 MYSQL_COL_PATIENT_ID=Original_MedID
 MYSQL_COL_VISIT_DATE=Test_Date
-GEMINI_API_KEY=your-gemini-api-key
-GEMINI_MODEL=gemini-2.5-flash
+OPENAI_API_KEY=your-openai-api-key
 DEMO_MODE=false
 ```
 
