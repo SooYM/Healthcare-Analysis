@@ -15,6 +15,7 @@
 7. [Frontend Components](#7-frontend-components)
 8. [AI Explanation Pipeline](#8-ai-explanation-pipeline)
 9. [OLAP Cube Engine](#9-olap-cube-engine)
+10. [Included Dataset & BigQuery Star Schema](#10-included-dataset--bigquery-star-schema)
 
 ---
 
@@ -32,9 +33,15 @@
 │                  SERVER-SIDE LIBS                        │
 │  bigquery.ts   openai.ts   huggingface.ts   gemini.ts   │
 │  stats.ts      clinical-ranges.ts   demo-data.ts        │
+│  env.ts        vertex.ts                                │
 ├─────────────────────────────────────────────────────────┤
 │              EXTERNAL SERVICES                           │
-│  Google BigQuery    HuggingFace/MedGemma    OpenAI GPT   │
+│  Google BigQuery    Google Gemini API    HuggingFace     │
+│  OpenAI GPT         Vertex AI (optional)                │
+├─────────────────────────────────────────────────────────┤
+│              INCLUDED DATASET (Dataset/)                 │
+│  3 CSVs  →  6 Dimensions  →  14 Facts  →  14 Views     │
+│  SQL scripts in Dataset/Script/{Dimension,Fact,View Fact}│
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -53,7 +60,7 @@ USER opens page
         ├─ IF demo mode OR no GCP credentials:
         │     └─► generateDemoRows() → synthetic data
         │
-        └─ ELSE (BigQuery configured):
+        └─ ELSE (BigQuery configured — 14 View_Fact_* views):
               ├─► getNumericColumns()  — discover which columns are numeric
               ├─► buildUnpivotBranch() — build SQL to UNPIVOT wide → long
               ├─► queryBiomarkerLong() — execute query, return BiomarkerRow[]
@@ -82,6 +89,7 @@ USER asks a question → POST /api/explain
     │     ├── Attach notable correlations (|r| > 0.3)
     │     └── detectClinicalPatterns() — multi-biomarker alerts
     │
+    ├─► Try Google Gemini         → return if success
     ├─► Try HuggingFace MedGemma  → return if success
     ├─► Try OpenAI GPT-5.5        → return if success
     └─► Fallback: localStubAnswer → structured data snapshot (no LLM)
@@ -126,15 +134,21 @@ FUNCTION getServerEnv():
         BIGQUERY_LOCATION     → default "US"
         BIGQUERY_DATASET      → default "A2"
         BIGQUERY_VIEW_NAMES   → comma-separated table/view names
+                                 (e.g. "View_Fact_CBC,View_Fact_Liver_Function,...")
         BIGQUERY_TABLE_FQN    → fully qualified table name
-        BQ_COL_PATIENT_ID     → column name for patient ID
-        BQ_COL_VISIT_DATE     → column name for visit date
+        BQ_COL_PATIENT_ID     → column name for patient ID (default "patient_id")
+        BQ_COL_VISIT_DATE     → column name for visit date (default "visit_date")
         BQ_COL_BIOMARKER      → column name for biomarker
         BQ_COL_VALUE          → column name for value
         VERTEX_LOCATION       → GCP region for Vertex AI
         VERTEX_MODEL          → Vertex model name
         HUGGINGFACE_MODEL     → default "google/medgemma-27b-text-it"
     RETURN validated config object
+
+    NOTE: For the included Dataset, set:
+        BQ_COL_PATIENT_ID = Original_MedID
+        BQ_COL_VISIT_DATE = Test_Date
+        BIGQUERY_VIEW_NAMES = all 14 View_Fact_* names
 
 FUNCTION isDemoMode():
     RETURN true IF process.env.DEMO_MODE === "true"
@@ -208,6 +222,10 @@ TRY providers in order:
     3. Local stub fallback (no LLM available)
          → Format a structured data snapshot as plain text
          → Return { answer, mode: "local_stub", warning }
+
+NOTE: gemini.ts is available as an additional provider (Google Gemini
+      API with retry/backoff, model fallback gemini-2.5-flash →
+      gemini-2.0-flash). Configure via GEMINI_API_KEY env var.
 ```
 
 ### 5.3 GET /api/patients
@@ -267,6 +285,10 @@ FUNCTION queryBiomarkerLong(env, params):
     EXECUTE query (max 5GB billed)
     MAP results to BiomarkerRow[]
     RETURN rows
+
+    NOTE: When using the included Dataset, this function queries
+    all 14 View_Fact_* analytics views, each contributing biomarkers
+    from a different clinical domain (CBC, Liver, Kidney, etc.).
 
 FUNCTION queryDistinctPatients(env):
     SELECT DISTINCT patient_id FROM first available table
@@ -363,13 +385,16 @@ FUNCTION generateDemoRows({ dateFrom, dateTo, biomarkerFilter?, patientId? }):
 ### 6.5 AI Providers
 
 ```
-// src/lib/openai.ts
+// src/lib/gemini.ts
 
-FUNCTION generateExplanationOpenAI(apiKey, prompt):
-    Create OpenAI client (supports custom base URL)
-    Call responses.create with model "gpt-5.5"
+FUNCTION generateExplanationGemini(apiKey, prompt):
+    POST to Gemini REST API (no SDK dependency)
+    Try primary model (gemini-2.5-flash), fallback to gemini-2.0-flash
+    Retry with exponential backoff on 429/5xx (max 2 retries)
+    Timeout: 30 seconds per attempt
+    Handle safety filter blocks
     System instruction: clinical research assistant role with strict rules
-    RETURN trimmed response text
+    RETURN response text
 
 // src/lib/huggingface.ts
 
@@ -381,15 +406,13 @@ FUNCTION generateExplanationHuggingFace(apiKey, prompt):
     Handle specific HTTP errors with actionable messages
     RETURN cleaned response text
 
-// src/lib/gemini.ts
+// src/lib/openai.ts
 
-FUNCTION generateExplanationGemini(apiKey, prompt):
-    POST to Gemini REST API (no SDK dependency)
-    Try primary model (gemini-2.5-flash), fallback to gemini-2.0-flash
-    Retry with exponential backoff on 429/5xx (max 2 retries)
-    Timeout: 30 seconds per attempt
-    Handle safety filter blocks
-    RETURN response text
+FUNCTION generateExplanationOpenAI(apiKey, prompt):
+    Create OpenAI client (supports custom base URL)
+    Call responses.create with model "gpt-5.5"
+    System instruction: clinical research assistant role with strict rules
+    RETURN trimmed response text
 
 // src/lib/vertex.ts
 
@@ -559,7 +582,10 @@ SEQUENCE: User asks "Why is ALT elevated?"
      "ALT_SGPT: 7-56 U/L"
 
 4. Provider cascade:
-     MedGemma (27B clinical model) → OpenAI GPT-5.5 → local stub
+     Google Gemini (2.5-flash, retry + fallback to 2.0-flash)
+       → HuggingFace MedGemma (27B clinical model)
+       → OpenAI GPT-5.5
+       → local stub
 
 5. Response streamed back → rendered as formatted markdown
 ```
@@ -593,6 +619,60 @@ Cross-filtering:
     Dashboard re-fetches with new filters
     All charts update to reflect the drill-through
 ```
+
+---
+
+## 10. Included Dataset & BigQuery Star Schema
+
+The `Dataset/` directory contains the complete medical-records dataset that powers the dashboard when connected to BigQuery.
+
+### Source Data
+
+```
+Dataset/
+├── AgeCategories.csv        # 7 rows — age-range → life-stage labels
+├── MedIDDetails.csv         # 1,155 rows — patient demographics
+├── Medical Records.csv      # 13,849 rows × 96 columns — lab results
+├── Script 2.0.pdf           # Consolidated SQL reference (58 pages)
+└── Script/
+    ├── Dimension/           # 6 SQL scripts (surrogate-key lookup tables)
+    │   ├── MedID_Dimension.sql
+    │   ├── LabReference_Dimension.sql
+    │   ├── SampleID_Dimension.sql
+    │   ├── Collected_Dimension.sql
+    │   ├── Time_Dimension.sql
+    │   └── Reported_Time_Dimension.sql
+    ├── Fact/                # 14 SQL scripts (domain-specific measure tables)
+    │   ├── Fact_Urine.sql           Fact_HbA1c.sql
+    │   ├── Fact_CBC.sql             Fact_Urine_ACR.sql
+    │   ├── Fact_Platelet_Profile.sql Fact_Calcium_Phos.sql
+    │   ├── Fact_Lipid_Profile.sql   Fact_Thyroid_Profile.sql
+    │   ├── Fact_Liver Function.sql  Fact_Glucose_Fasting.sql
+    │   ├── Fact_Kidney_Function.sql Fact_Glucose_PP.sql
+    │   └── Fact_Iron_Profile.sql    Fact_Glucose_Diagnopath.sql
+    └── View Fact/           # 14 SQL scripts (denormalized analytics views)
+        ├── View_Fact_Urine.sql      View_Fact_HbA1c.sql
+        ├── View_Fact_CBC.sql        View_Fact_Urine_ACR.sql
+        └── ... (one per fact table)
+```
+
+### Schema Pipeline
+
+```
+3 CSVs → 6 Dimensions → 14 Fact Tables → 14 Analytics Views
+                                            ↓
+                              Dashboard queries via UNION ALL
+                              (BIGQUERY_VIEW_NAMES = all 14 views)
+```
+
+### Loading Into BigQuery
+
+1. Upload the 3 CSVs to BigQuery dataset `bigquery-tutorial-480009.A2`.
+2. Run SQL scripts in order: `Dataset/Script/Dimension/*.sql` → `Dataset/Script/Fact/*.sql` → `Dataset/Script/View Fact/*.sql`.
+3. Set `BIGQUERY_VIEW_NAMES` in `.env.local` to the 14 `View_Fact_*` view names.
+4. Set `BQ_COL_PATIENT_ID=Original_MedID` and `BQ_COL_VISIT_DATE=Test_Date` (column names in the views).
+
+For detailed schema documentation, see `Dataset/README.md`, `Dataset/walkthrough.md`, and `Dataset/pseudocode.md`.
 
 ---
 
