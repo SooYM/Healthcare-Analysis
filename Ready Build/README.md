@@ -19,13 +19,16 @@ This folder contains the **compiled, deployment-ready** Next.js standalone build
 Create a `.env.local` file (or set OS-level env vars) with:
 
 ```env
-GOOGLE_APPLICATION_CREDENTIALS=path/to/bigquery-sa.json
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_PASSWORD=
+MYSQL_DATABASE=healthcare_dashboard
+MYSQL_PORT=3306
+MYSQL_VIEW_NAMES=View_Fact_Urine,View_Fact_CBC,View_Fact_Platelet_Profile,View_Fact_Lipid_Profile,View_Fact_Liver_Function,View_Fact_Kidney_Function,View_Fact_Iron_Profile,View_Fact_HbA1c,View_Fact_Urine_ACR,View_Fact_Calcium_Phos,View_Fact_Thyroid_Profile,View_Fact_Glucose_Fasting,View_Fact_Glucose_PP,View_Fact_Glucose_Diagnopath
+MYSQL_COL_PATIENT_ID=Original_MedID
+MYSQL_COL_VISIT_DATE=Test_Date
 GEMINI_API_KEY=your-gemini-api-key
 GEMINI_MODEL=gemini-2.5-flash
-GCP_PROJECT_ID=your-project-id
-BIGQUERY_LOCATION=US
-BIGQUERY_DATASET=A2
-BIGQUERY_VIEW_NAMES=View_Fact_Urine,View_Fact_CBC,View_Fact_Platelet_Profile,...
 DEMO_MODE=false
 ```
 
@@ -47,4 +50,3 @@ PORT=8080 node server.js
 
 - This is a **standalone** build — no `npm install` required
 - Node.js 18+ is required
-- The BigQuery service account JSON key must be accessible at the path specified in `GOOGLE_APPLICATION_CREDENTIALS`

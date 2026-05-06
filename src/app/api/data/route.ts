@@ -3,9 +3,9 @@ import { z } from "zod";
 import {
   getServerEnv,
   isDemoMode,
-  parseBigQueryViewNames,
+  parseMySQLViewNames,
 } from "@/lib/env";
-import { queryBiomarkerLong } from "@/lib/bigquery";
+import { queryBiomarkerLong } from "@/lib/mysql";
 import { generateDemoRows } from "@/lib/demo-data";
 import { correlationMatrix, summaryStats } from "@/lib/stats";
 import type { DataResponse } from "@/types";
@@ -41,35 +41,24 @@ export async function POST(req: Request) {
   let source: DataResponse["source"] = "demo";
   let demoReason: string | undefined;
 
-  const viewNames = parseBigQueryViewNames(env);
+  const viewNames = parseMySQLViewNames(env);
   const hasUnion = viewNames.length > 0;
 
-  const tableFqn = env.BIGQUERY_TABLE_FQN ?? "";
-  const placeholderTable =
-    tableFqn.includes("REPLACE_ME") || tableFqn.endsWith(".A2.");
-  const hasSingle = Boolean(tableFqn) && !placeholderTable;
+  const tableFqn = env.MYSQL_TABLE_FQN ?? "";
+  const hasSingle = Boolean(tableFqn);
 
-  const useBigQuery =
+  const useMySQL =
     !isDemoMode() &&
-    Boolean(env.GCP_PROJECT_ID) &&
     (hasUnion || hasSingle);
 
   if (isDemoMode()) {
-    demoReason = "DEMO_MODE=true — set DEMO_MODE=false to use BigQuery.";
-    rows = generateDemoRows({ dateFrom, dateTo, biomarkerFilter: biomarkers, patientId });
-  } else if (!env.GCP_PROJECT_ID) {
-    demoReason =
-      "Set GCP_PROJECT_ID in .env.local (and GOOGLE_APPLICATION_CREDENTIALS if using a service account).";
+    demoReason = "DEMO_MODE=true — set DEMO_MODE=false to use MySQL.";
     rows = generateDemoRows({ dateFrom, dateTo, biomarkerFilter: biomarkers, patientId });
   } else if (!hasUnion && !hasSingle) {
     demoReason =
-      "BigQuery not configured: set BIGQUERY_VIEW_NAMES (comma-separated views in dataset A2) or a valid BIGQUERY_TABLE_FQN.";
+      "MySQL not configured: set MYSQL_VIEW_NAMES (comma-separated views) or a valid MYSQL_TABLE_FQN.";
     rows = generateDemoRows({ dateFrom, dateTo, biomarkerFilter: biomarkers, patientId });
-  } else if (!hasUnion && placeholderTable) {
-    demoReason =
-      "BIGQUERY_TABLE_FQN still has a placeholder (e.g. REPLACE_ME). Either set BIGQUERY_VIEW_NAMES for multiple views or set BIGQUERY_TABLE_FQN to a real table.";
-    rows = generateDemoRows({ dateFrom, dateTo, biomarkerFilter: biomarkers, patientId });
-  } else if (useBigQuery) {
+  } else if (useMySQL) {
     try {
       rows = await queryBiomarkerLong(env, {
         dateFrom,
@@ -78,11 +67,11 @@ export async function POST(req: Request) {
         rowLimit,
         patientId,
       });
-      source = "bigquery";
+      source = "bigquery"; // Keep bigquery as source type for now to avoid breaking types, or change it if we modify types.ts
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("BigQuery error, falling back to demo:", e);
-      demoReason = `BigQuery query failed (showing demo data): ${msg}`;
+      console.error("MySQL error, falling back to demo:", e);
+      demoReason = `MySQL query failed (showing demo data): ${msg}`;
       rows = generateDemoRows({ dateFrom, dateTo, biomarkerFilter: biomarkers, patientId });
       source = "demo";
     }

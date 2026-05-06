@@ -1,8 +1,8 @@
 {
+  "/_not-found/page": "/_not-found",
   "/api/data/route": "/api/data",
   "/api/explain/route": "/api/explain",
   "/api/health/route": "/api/health",
-  "/_not-found/page": "/_not-found",
   "/api/patients/route": "/api/patients",
   "/page": "/"
 }

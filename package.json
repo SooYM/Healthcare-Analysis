@@ -9,12 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@google-cloud/bigquery": "^7.9.4",
     "@google-cloud/vertexai": "^1.10.0",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
     "echarts-gl": "^2.0.9",
     "framer-motion": "^12.38.0",
+    "mysql2": "^3.22.3",
     "next": "^15.1.0",
     "openai": "^6.34.0",
     "react": "^19.0.0",

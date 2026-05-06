@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
-import { getServerEnv, isDemoMode, parseBigQueryViewNames } from "@/lib/env";
-import { queryDistinctPatients } from "@/lib/bigquery";
+import { getServerEnv, isDemoMode, parseMySQLViewNames } from "@/lib/env";
+import { queryDistinctPatients } from "@/lib/mysql";
 
 export async function GET() {
   const env = getServerEnv();
 
-  const viewNames = parseBigQueryViewNames(env);
+  const viewNames = parseMySQLViewNames(env);
   const hasUnion = viewNames.length > 0;
 
-  const tableFqn = env.BIGQUERY_TABLE_FQN ?? "";
-  const placeholderTable =
-    tableFqn.includes("REPLACE_ME") || tableFqn.endsWith(".A2.");
-  const hasSingle = Boolean(tableFqn) && !placeholderTable;
+  const tableFqn = env.MYSQL_TABLE_FQN ?? "";
+  const hasSingle = Boolean(tableFqn);
 
-  const useBigQuery =
+  const useMySQL =
     !isDemoMode() &&
-    Boolean(env.GCP_PROJECT_ID) &&
     (hasUnion || hasSingle);
 
-  if (useBigQuery) {
+  if (useMySQL) {
     try {
       const patientIds = await queryDistinctPatients(env);
       return NextResponse.json({
@@ -26,7 +23,7 @@ export async function GET() {
         totalReports: patientIds.length,
       });
     } catch (e) {
-      console.error("BigQuery error fetching patients, falling back to demo:", e);
+      console.error("MySQL error fetching patients, falling back to demo:", e);
     }
   }
 
