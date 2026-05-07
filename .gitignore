@@ -21,10 +21,7 @@ node_modules/
 .next/
 .DS_Store
 tsconfig.tsbuildinfo
-.env.local
-.secrets
-env.bigquery.us
-node_modules/
-.next/
-.DS_Store
-tsconfig.tsbuildinfo
+
+# Custom Build Folders
+build with env/
+Ready Build/
