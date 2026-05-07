@@ -2,14 +2,14 @@ const { BigQuery } = require("@google-cloud/bigquery");
 
 async function main() {
   const client = new BigQuery({
-    projectId: "bigquery-tutorial-480009",
+    projectId: "healthcare-dashboard-495507",
     keyFilename: ".secrets/bigquery-sa.json",
     location: "US",
   });
 
   const sql = `
     SELECT table_name, column_name, data_type
-    FROM \`bigquery-tutorial-480009.A2.INFORMATION_SCHEMA.COLUMNS\`
+    FROM \`healthcare-dashboard-495507.A2.INFORMATION_SCHEMA.COLUMNS\`
     WHERE table_name = 'View_Fact_Urine'
     ORDER BY ordinal_position
   `;
