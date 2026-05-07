@@ -53,8 +53,34 @@ A high-performance, AI-augmented healthcare analytics dashboard built with Next.
     ```
     Fill in your GCP credentials and API keys in `.env.local`. If no credentials are provided, the app will default to **Demo Mode** with synthetic data.
 
+### ☁️ Server Deployment Setup for BigQuery
+
+When deploying the dashboard on a production server (like a VPS, Vercel, or Docker container), you must configure the Google BigQuery credentials securely:
+
+1. **Create the Service Account Key**:
+   - Go to the **Google Cloud Console** > **IAM & Admin** > **Service Accounts**.
+   - Create a service account (or select an existing one) and grant it the `BigQuery Data Viewer` and `BigQuery Job User` roles.
+   - Go to the **Keys** tab, click **Add Key** > **Create new key** > **JSON**.
+   - Download the file and place it securely on your server (e.g., in `.secrets/bigquery-sa.json`).
+
+2. **Configure the Environment Variables**:
+   In your production `.env` or server environment variables, configure the connection:
+   ```env
+   # Set the path to the downloaded JSON key
+   GOOGLE_APPLICATION_CREDENTIALS=./.secrets/bigquery-sa.json
+   
+   # Set your Google Cloud Project ID
+   GCP_PROJECT_ID=healthcare-dashboard-495507
+   
+   # Specify the dataset name where your views are located
+   BIGQUERY_DATASET=HealthcareDataset
+   
+   # Provide the comma-separated list of your 14 views
+   BIGQUERY_VIEW_NAMES=View_Fact_Urine,View_Fact_CBC,...
+   ```
+
 4.  **Load the Dataset into BigQuery** *(optional — only needed for live data)*:
-    - Upload the 3 CSVs from `Dataset/` to your BigQuery dataset (`A2`).
+    - Upload the 3 CSVs from `Dataset/` to your BigQuery dataset (`HealthcareDataset`).
     - Run the SQL scripts in `Dataset/Script/` in order: **Dimension → Fact → View Fact**.
     - Or follow the consolidated instructions in `Dataset/Script 2.0.pdf`.
 
