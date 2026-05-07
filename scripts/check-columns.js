@@ -9,7 +9,7 @@ async function main() {
 
   const sql = `
     SELECT table_name, column_name, data_type
-    FROM \`healthcare-dashboard-495507.A2.INFORMATION_SCHEMA.COLUMNS\`
+    FROM \`healthcare-dashboard-495507.HealthcareDataset.INFORMATION_SCHEMA.COLUMNS\`
     WHERE table_name = 'View_Fact_Urine'
     ORDER BY ordinal_position
   `;
